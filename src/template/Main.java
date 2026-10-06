@@ -9,21 +9,7 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Paciência (Klondike, compra de 1 carta) usando filas.
- * 
- * Onde as filas são usadas:
- *  - baralho: o baralho embaralhado é uma fila; a distribuição inicial
- *    desenfileira as cartas para as colunas;
- *  - estoque: fila de onde as cartas são compradas (dequeue);
- *  - descarte: fila que recebe as cartas compradas (enqueue). Quando o
- *    estoque acaba, o descarte é desenfileirado inteiro de volta para o
- *    estoque, mantendo a ordem (comportamento FIFO).
- * 
- * Controles:
- *  - Clique no estoque: compra uma carta (ou recicla o descarte);
- *  - Botão esquerdo: arrastar cartas;
- *  - Botão direito sobre uma carta: envia para a fundação, se possível;
- *  - R: novo jogo.
+ * Paciência (Klondike, compra de 1 carta) usando filas e imagens PNG.
  */
 public class Main extends EngineFrame {
 
@@ -37,37 +23,17 @@ public class Main extends EngineFrame {
     private static final int TOPO_Y = 20;      // y da linha superior
     private static final int TAB_Y = 165;      // y do início das colunas
 
-    private static final String[] NAIPES = { "\u2665", "\u2666", "\u2663", "\u2660" }; // copas, ouros, paus, espadas
-    private static final String[] VALORES = { "", "A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K" };
-
-    // ---------------------------------------------------------------- tipos
-    private static class Carta {
-        final int naipe;   // 0 e 1 vermelhos; 2 e 3 pretos
-        final int valor;   // 1 (A) até 13 (K)
-        boolean virada;    // true = face para cima
-
-        Carta( int naipe, int valor ) {
-            this.naipe = naipe;
-            this.valor = valor;
-        }
-
-        boolean vermelha() {
-            return naipe < 2;
-        }
-    }
-
     private enum Origem { NENHUMA, DESCARTE, COLUNA, FUNDACAO }
 
     // ---------------------------------------------------------------- estado
     private Image logo;
+    private Image imgVersoGlobal;
 
     private Fila<Carta> estoque;
     private Fila<Carta> descarte;
     private List<List<Carta>> colunas;
     private List<List<Carta>> fundacoes;
 
-    // atenção: sem inicializadores aqui, pois create() roda dentro do
-    // construtor da EngineFrame, antes da inicialização dos campos desta classe
     private List<Carta> arrastando;
     private Origem origem;
     private int origemIdx;
@@ -101,6 +67,14 @@ public class Main extends EngineFrame {
         logo = DrawingUtils.createLogo();
         logo.resize( (int) ( logo.getWidth() * 0.1 ), (int) ( logo.getWidth() * 0.1 ) );
         setWindowIcon( logo );
+
+        // Carrega a imagem do verso uma vez no carregamento do jogo
+        imgVersoGlobal = loadImage( "resources/images/Verso.png" );
+        
+        if ( imgVersoGlobal != null ) {
+            imgVersoGlobal.resize( CW, CH );
+        }
+
         novoJogo();
     }
 
@@ -122,7 +96,17 @@ public class Main extends EngineFrame {
         List<Carta> todas = new ArrayList<>();
         for ( int n = 0; n < 4; n++ ) {
             for ( int v = 1; v <= 13; v++ ) {
-                todas.add( new Carta( n, v ) );
+                Carta c = new Carta( n, v );
+                c.setImagemVerso( imgVersoGlobal );
+                
+                // Carrega a imagem PNG individual da carta e redimensiona
+                Image imgFrente = loadImage( c.getCaminhoImagem() );
+                if ( imgFrente != null ) {
+                    imgFrente.resize( CW, CH );
+                    c.setImagemFrente( imgFrente );
+                }
+                
+                todas.add( c );
             }
         }
         Collections.shuffle( todas );
@@ -222,10 +206,6 @@ public class Main extends EngineFrame {
     }
 
     // ---------------------------------------------------------------- operações com filas
-    /**
-     * Compra uma carta: dequeue do estoque e enqueue no descarte.
-     * Se o estoque estiver vazio, o descarte volta para o estoque na mesma ordem.
-     */
     private void comprar() {
         if ( !estoque.isEmpty() ) {
             Carta c = estoque.dequeue();
@@ -242,10 +222,6 @@ public class Main extends EngineFrame {
         }
     }
 
-    /**
-     * Remove a última carta do descarte usando apenas operações de fila:
-     * rotaciona (dequeue + enqueue) tamanho-1 vezes e depois desenfileira.
-     */
     private Carta removerUltimoDescarte() {
         int n = descarte.size();
         for ( int i = 0; i < n - 1; i++ ) {
@@ -452,32 +428,31 @@ public class Main extends EngineFrame {
 
     // ---------------------------------------------------------------- desenho
     private void desenharVerso( double x, double y ) {
-        fillRectangle( x, y, CW, CH, WHITE );
-        fillRectangle( x + 5, y + 5, CW - 10, CH - 10, BLUE );
-        drawRectangle( x + 5, y + 5, CW - 10, CH - 10, DARKBLUE );
-        drawRectangle( x, y, CW, CH, BLACK );
+        if ( imgVersoGlobal != null ) {
+            drawImage( imgVersoGlobal, x, y );
+        } else {
+            // Fallback em codigo caso nao exista verso.png na pasta
+            fillRectangle( x, y, CW, CH, WHITE );
+            fillRectangle( x + 5, y + 5, CW - 10, CH - 10, BLUE );
+            drawRectangle( x + 5, y + 5, CW - 10, CH - 10, DARKBLUE );
+            drawRectangle( x, y, CW, CH, BLACK );
+        }
     }
 
     private void desenharCarta( Carta c, double x, double y ) {
 
         if ( !c.virada ) {
-            desenharVerso( x, y );
+            if ( c.getImagemVerso() != null ) {
+                drawImage( c.getImagemVerso(), x, y );
+            } else {
+                desenharVerso( x, y );
+            }
             return;
         }
 
-        boolean vermelha = c.vermelha();
-        String valor = VALORES[c.valor];
-        String naipe = NAIPES[c.naipe];
-
-        fillRectangle( x, y, CW, CH, WHITE );
-        drawRectangle( x, y, CW, CH, BLACK );
-
-        drawText( valor, x + 7, y + 5, 20, vermelha ? RED : BLACK );
-        drawText( naipe, x + 7, y + 27, 20, vermelha ? RED : BLACK );
-
-        Rectangle r = measureTextBounds( naipe, 44 );
-        drawText( naipe, x + CW / 2.0 - r.width / 2, y + CH / 2.0 - r.height / 2 + 10, 44, vermelha ? RED : BLACK );
-
+        if ( c.getImagemFrente() != null ) {
+            drawImage( c.getImagemFrente(), x, y );
+        }
     }
 
     private void desenharSlot( double x, double y, String rotulo ) {
