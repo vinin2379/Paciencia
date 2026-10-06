@@ -9,19 +9,19 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Paciência (Klondike, compra de 1 carta) usando filas e imagens PNG.
+ * Paciência (Klondike) com modo didático ativado pela tecla Espaço.
  */
 public class Main extends EngineFrame {
 
     // ---------------------------------------------------------------- constantes
     private static final int LARGURA = 800;
-    private static final int ALTURA = 650;
-    private static final int CW = 88;          // largura da carta
-    private static final int CH = 120;         // altura da carta
-    private static final int GAP = 24;         // espaço entre colunas
+    private static final int ALTURA = 900;
+    private static final int CW = 88;
+    private static final int CH = 120;
+    private static final int GAP = 24;
     private static final int MARGEM = 20;
-    private static final int TOPO_Y = 20;      // y da linha superior
-    private static final int TAB_Y = 165;      // y do início das colunas
+    private static final int TOPO_Y = 20;
+    private static final int TAB_Y = 165;
 
     private enum Origem { NENHUMA, DESCARTE, COLUNA, FUNDACAO }
 
@@ -29,8 +29,9 @@ public class Main extends EngineFrame {
     private Image logo;
     private Image imgVersoGlobal;
 
-    private Fila<Carta> estoque;
-    private Fila<Carta> descarte;
+    private Pilha<Carta> estoque;
+    private Pilha<Carta> descarte;
+    
     private List<List<Carta>> colunas;
     private List<List<Carta>> fundacoes;
 
@@ -47,19 +48,11 @@ public class Main extends EngineFrame {
     private double tempo;
     private boolean venceu;
 
+    // NOVIDADE: Inicia com o modo didático DESLIGADO (false)
+    private boolean modoDidatico = false;
+
     public Main() {
-        super(
-            LARGURA,
-            ALTURA,
-            "Paciência",
-            60,
-            true,
-            false,
-            false,
-            false,
-            false,
-            false
-        );
+        super( LARGURA, ALTURA, "Paciência", 60, true, false, false, false, false, false );
     }
 
     @Override
@@ -68,30 +61,26 @@ public class Main extends EngineFrame {
         logo.resize( (int) ( logo.getWidth() * 0.1 ), (int) ( logo.getWidth() * 0.1 ) );
         setWindowIcon( logo );
 
-        // Carrega a imagem do verso uma vez no carregamento do jogo
-        imgVersoGlobal = loadImage( "resources/images/Verso.png" );
-        
+        imgVersoGlobal = loadImage( "resources/images/verso.png" );
         if ( imgVersoGlobal != null ) {
             imgVersoGlobal.resize( CW, CH );
         }
 
         novoJogo();
+        
+        // As janelas extras NÃO iniciam sozinhas mais, esperam a barra de espaço.
     }
 
     // ---------------------------------------------------------------- preparação
     private void novoJogo() {
 
-        estoque = new Fila<>();
-        descarte = new Fila<>();
+        estoque = new Pilha<>();
+        descarte = new Pilha<>();
         colunas = new ArrayList<>();
         fundacoes = new ArrayList<>();
 
-        for ( int i = 0; i < 7; i++ ) {
-            colunas.add( new ArrayList<>() );
-        }
-        for ( int i = 0; i < 4; i++ ) {
-            fundacoes.add( new ArrayList<>() );
-        }
+        for ( int i = 0; i < 7; i++ ) { colunas.add( new ArrayList<>() ); }
+        for ( int i = 0; i < 4; i++ ) { fundacoes.add( new ArrayList<>() ); }
 
         List<Carta> todas = new ArrayList<>();
         for ( int n = 0; n < 4; n++ ) {
@@ -99,36 +88,31 @@ public class Main extends EngineFrame {
                 Carta c = new Carta( n, v );
                 c.setImagemVerso( imgVersoGlobal );
                 
-                // Carrega a imagem PNG individual da carta e redimensiona
                 Image imgFrente = loadImage( c.getCaminhoImagem() );
                 if ( imgFrente != null ) {
                     imgFrente.resize( CW, CH );
                     c.setImagemFrente( imgFrente );
                 }
-                
                 todas.add( c );
             }
         }
         Collections.shuffle( todas );
 
-        // o baralho embaralhado vira uma fila
-        Fila<Carta> baralho = new Fila<>();
+        Pilha<Carta> baralho = new Pilha<>();
         for ( Carta c : todas ) {
-            baralho.enqueue( c );
+            baralho.push( c );
         }
 
-        // distribuição: desenfileira do baralho para as colunas
         for ( int i = 0; i < 7; i++ ) {
             for ( int j = i; j < 7; j++ ) {
-                Carta c = baralho.dequeue();
+                Carta c = baralho.pop();
                 c.virada = ( i == j );
                 colunas.get( j ).add( c );
             }
         }
 
-        // o que sobrou vai para a fila do estoque
         while ( !baralho.isEmpty() ) {
-            estoque.enqueue( baralho.dequeue() );
+            estoque.push( baralho.pop() );
         }
 
         arrastando = new ArrayList<>();
@@ -136,27 +120,41 @@ public class Main extends EngineFrame {
         movimentos = 0;
         tempo = 0;
         venceu = false;
-
     }
 
-    // ---------------------------------------------------------------- geometria
-    private int colX( int i ) {
-        return MARGEM + i * ( CW + GAP );
+    // ---------------------------------------------------------------- operações com pilhas
+    private void comprar() {
+        if ( !estoque.isEmpty() ) {
+            Carta c = estoque.pop();
+            c.virada = true;
+            descarte.push( c );
+            movimentos++;
+        } else if ( !descarte.isEmpty() ) {
+            while ( !descarte.isEmpty() ) {
+                Carta c = descarte.pop();
+                c.virada = false;
+                estoque.push( c );
+            }
+            movimentos++;
+        }
     }
+
+    private Carta removerUltimoDescarte() {
+        return descarte.pop();
+    }
+
+    // ---------------------------------------------------------------- geometria & logica
+    private int colX( int i ) { return MARGEM + i * ( CW + GAP ); }
 
     private double[] offsets( List<Carta> col ) {
         double abaixo = 12;
         double acima = 26;
-        int nd = 0;
-        int nu = 0;
+        int nd = 0, nu = 0;
         for ( Carta c : col ) {
-            if ( c.virada ) {
-                nu++;
-            } else {
-                nd++;
-            }
+            if ( c.virada ) nu++;
+            else nd++;
         }
-        double disponivel = ALTURA - TAB_Y - CH - 15;
+        double disponivel = 650 - TAB_Y - CH - 15;
         double total = nd * abaixo + Math.max( 0, nu - 1 ) * acima;
         if ( total > disponivel && nu > 1 ) {
             acima = Math.max( 10, ( disponivel - nd * abaixo ) / ( nu - 1 ) );
@@ -177,132 +175,83 @@ public class Main extends EngineFrame {
         return px >= x && px <= x + w && py >= y && py <= y + h;
     }
 
-    // ---------------------------------------------------------------- regras
     private boolean podeFundacao( Carta c, int f ) {
         List<Carta> fund = fundacoes.get( f );
-        if ( fund.isEmpty() ) {
-            return c.valor == 1;
-        }
+        if ( fund.isEmpty() ) return c.valor == 1;
         Carta topo = fund.get( fund.size() - 1 );
         return topo.naipe == c.naipe && c.valor == topo.valor + 1;
     }
 
     private boolean podeColuna( Carta c, int idx ) {
         List<Carta> col = colunas.get( idx );
-        if ( col.isEmpty() ) {
-            return c.valor == 13;
-        }
+        if ( col.isEmpty() ) return c.valor == 13;
         Carta topo = col.get( col.size() - 1 );
         return topo.virada && topo.vermelha() != c.vermelha() && topo.valor == c.valor + 1;
     }
 
     private void verificarVitoria() {
         for ( List<Carta> f : fundacoes ) {
-            if ( f.size() < 13 ) {
-                return;
-            }
+            if ( f.size() < 13 ) return;
         }
         venceu = true;
     }
 
-    // ---------------------------------------------------------------- operações com filas
-    private void comprar() {
-        if ( !estoque.isEmpty() ) {
-            Carta c = estoque.dequeue();
-            c.virada = true;
-            descarte.enqueue( c );
-            movimentos++;
-        } else if ( !descarte.isEmpty() ) {
-            while ( !descarte.isEmpty() ) {
-                Carta c = descarte.dequeue();
-                c.virada = false;
-                estoque.enqueue( c );
-            }
-            movimentos++;
-        }
-    }
-
-    private Carta removerUltimoDescarte() {
-        int n = descarte.size();
-        for ( int i = 0; i < n - 1; i++ ) {
-            descarte.enqueue( descarte.dequeue() );
-        }
-        return descarte.dequeue();
-    }
-
     private void removerOrigem() {
         switch ( origem ) {
-            case DESCARTE: {
-                removerUltimoDescarte();
+            case DESCARTE: 
+                removerUltimoDescarte(); 
                 break;
-            }
-            case COLUNA: {
+            case COLUNA: 
                 List<Carta> col = colunas.get( origemIdx );
                 col.subList( origemPos, col.size() ).clear();
-                if ( !col.isEmpty() ) {
-                    col.get( col.size() - 1 ).virada = true;
-                }
+                if ( !col.isEmpty() ) col.get( col.size() - 1 ).virada = true;
                 break;
-            }
-            case FUNDACAO: {
+            case FUNDACAO: 
                 List<Carta> f = fundacoes.get( origemIdx );
                 f.remove( f.size() - 1 );
                 break;
-            }
-            default:
-                break;
+            default: break;
         }
     }
 
-    // ---------------------------------------------------------------- entrada
     @Override
     public void update( double delta ) {
-
         mx = getMouseX();
         my = getMouseY();
 
-        if ( isKeyPressed( KEY_R ) ) {
-            novoJogo();
-            return;
+        // CONTROLE DA BARRA DE ESPAÇO
+        if ( isKeyPressed( KEY_SPACE ) ) {
+            modoDidatico = !modoDidatico;
+            
+            // Se ativou, abrimos as janelas em Threads secundárias
+            if ( modoDidatico ) {
+                new Thread(() -> new JanelaColunas(this)).start();
+                new Thread(() -> new JanelaFundacoes(this)).start();
+            }
         }
 
-        if ( venceu ) {
-            return;
-        }
-
+        if ( isKeyPressed( KEY_R ) ) { novoJogo(); return; }
+        if ( venceu ) return;
         tempo += delta;
 
-        if ( isMouseButtonPressed( MOUSE_BUTTON_LEFT ) ) {
-            aoPressionar();
-        } else if ( isMouseButtonReleased( MOUSE_BUTTON_LEFT ) ) {
-            aoSoltar();
-        }
-
-        if ( isMouseButtonPressed( MOUSE_BUTTON_RIGHT ) ) {
-            autoFundacao();
-        }
-
+        if ( isMouseButtonPressed( MOUSE_BUTTON_LEFT ) ) aoPressionar();
+        else if ( isMouseButtonReleased( MOUSE_BUTTON_LEFT ) ) aoSoltar();
+        if ( isMouseButtonPressed( MOUSE_BUTTON_RIGHT ) ) autoFundacao();
     }
 
     private void aoPressionar() {
-
-        // estoque
         if ( dentro( mx, my, colX( 0 ), TOPO_Y, CW, CH ) ) {
             comprar();
             return;
         }
-
-        // descarte
         if ( !descarte.isEmpty() && dentro( mx, my, colX( 1 ), TOPO_Y, CW, CH ) ) {
             arrastando.clear();
-            arrastando.add( descarte.peekLast() );
+            arrastando.add( descarte.peek() );
             origem = Origem.DESCARTE;
             offX = mx - colX( 1 );
             offY = my - TOPO_Y;
             return;
         }
-
-        // fundações
         for ( int f = 0; f < 4; f++ ) {
             List<Carta> fund = fundacoes.get( f );
             if ( !fund.isEmpty() && dentro( mx, my, colX( 3 + f ), TOPO_Y, CW, CH ) ) {
@@ -315,8 +264,6 @@ public class Main extends EngineFrame {
                 return;
             }
         }
-
-        // colunas
         for ( int c = 0; c < 7; c++ ) {
             List<Carta> col = colunas.get( c );
             for ( int i = col.size() - 1; i >= 0; i-- ) {
@@ -335,19 +282,13 @@ public class Main extends EngineFrame {
                 }
             }
         }
-
     }
 
     private void aoSoltar() {
-
-        if ( arrastando.isEmpty() ) {
-            return;
-        }
-
+        if ( arrastando.isEmpty() ) return;
         boolean ok = false;
         Carta primeira = arrastando.get( 0 );
 
-        // tenta fundação (somente uma carta)
         if ( arrastando.size() == 1 && my < TAB_Y - 10 ) {
             for ( int f = 0; f < 4; f++ ) {
                 if ( mx >= colX( 3 + f ) - GAP / 2 && mx <= colX( 3 + f ) + CW + GAP / 2 && podeFundacao( primeira, f ) ) {
@@ -358,8 +299,6 @@ public class Main extends EngineFrame {
                 }
             }
         }
-
-        // tenta coluna
         if ( !ok && my >= TAB_Y - 10 ) {
             for ( int c = 0; c < 7; c++ ) {
                 if ( mx >= colX( c ) - GAP / 2 && mx <= colX( c ) + CW + GAP / 2 ) {
@@ -372,25 +311,21 @@ public class Main extends EngineFrame {
                 }
             }
         }
-
         if ( ok ) {
             movimentos++;
             verificarVitoria();
         }
-
         arrastando.clear();
         origem = Origem.NENHUMA;
-
     }
 
     private void autoFundacao() {
-
         Carta carta = null;
         Origem o = Origem.NENHUMA;
         int idx = -1;
 
         if ( !descarte.isEmpty() && dentro( mx, my, colX( 1 ), TOPO_Y, CW, CH ) ) {
-            carta = descarte.peekLast();
+            carta = descarte.peek();
             o = Origem.DESCARTE;
         } else {
             for ( int c = 0; c < 7; c++ ) {
@@ -403,18 +338,13 @@ public class Main extends EngineFrame {
                 }
             }
         }
-
-        if ( carta == null || !carta.virada ) {
-            return;
-        }
+        if ( carta == null || !carta.virada ) return;
 
         for ( int f = 0; f < 4; f++ ) {
             if ( podeFundacao( carta, f ) ) {
                 origem = o;
                 origemIdx = idx;
-                if ( o == Origem.COLUNA ) {
-                    origemPos = colunas.get( idx ).size() - 1;
-                }
+                if ( o == Origem.COLUNA ) origemPos = colunas.get( idx ).size() - 1;
                 removerOrigem();
                 origem = Origem.NENHUMA;
                 fundacoes.get( f ).add( carta );
@@ -423,36 +353,24 @@ public class Main extends EngineFrame {
                 return;
             }
         }
-
     }
 
-    // ---------------------------------------------------------------- desenho
+    // ---------------------------------------------------------------- desenho de interface
     private void desenharVerso( double x, double y ) {
-        if ( imgVersoGlobal != null ) {
-            drawImage( imgVersoGlobal, x, y );
-        } else {
-            // Fallback em codigo caso nao exista verso.png na pasta
+        if ( imgVersoGlobal != null ) drawImage( imgVersoGlobal, x, y );
+        else {
             fillRectangle( x, y, CW, CH, WHITE );
             fillRectangle( x + 5, y + 5, CW - 10, CH - 10, BLUE );
-            drawRectangle( x + 5, y + 5, CW - 10, CH - 10, DARKBLUE );
-            drawRectangle( x, y, CW, CH, BLACK );
         }
     }
 
     private void desenharCarta( Carta c, double x, double y ) {
-
         if ( !c.virada ) {
-            if ( c.getImagemVerso() != null ) {
-                drawImage( c.getImagemVerso(), x, y );
-            } else {
-                desenharVerso( x, y );
-            }
+            if ( c.getImagemVerso() != null ) drawImage( c.getImagemVerso(), x, y );
+            else desenharVerso( x, y );
             return;
         }
-
-        if ( c.getImagemFrente() != null ) {
-            drawImage( c.getImagemFrente(), x, y );
-        }
+        if ( c.getImagemFrente() != null ) drawImage( c.getImagemFrente(), x, y );
     }
 
     private void desenharSlot( double x, double y, String rotulo ) {
@@ -465,25 +383,29 @@ public class Main extends EngineFrame {
 
     @Override
     public void draw() {
-
         clearBackground( DARKGREEN );
 
         // estoque
-        if ( !estoque.isEmpty() ) {
-            desenharVerso( colX( 0 ), TOPO_Y );
-        } else {
+        if ( !estoque.isEmpty() ) desenharVerso( colX( 0 ), TOPO_Y );
+        else {
             desenharSlot( colX( 0 ), TOPO_Y, null );
             drawText( "Virar", colX( 0 ) + 22, TOPO_Y + CH / 2 - 8, 16, LIGHTGRAY );
         }
         drawText( "Estoque: " + estoque.size(), colX( 0 ), TOPO_Y + CH + 4, 14, WHITE );
 
-        // descarte (o topo é a última carta enfileirada)
+        // descarte 
+        // Oculta a carta (apenas a imagem) se não for modo didático
         boolean arrastandoDescarte = origem == Origem.DESCARTE && !arrastando.isEmpty();
         if ( !descarte.isEmpty() && !arrastandoDescarte ) {
-            desenharCarta( descarte.peekLast(), colX( 1 ), TOPO_Y );
+             if (modoDidatico) {
+                 desenharCarta( descarte.peek(), colX( 1 ), TOPO_Y );
+             } else {
+                 desenharSlot( colX( 1 ), TOPO_Y, null ); // Esconde a carta jogada!
+             }
         } else {
-            desenharSlot( colX( 1 ), TOPO_Y, null );
+             desenharSlot( colX( 1 ), TOPO_Y, null );
         }
+        
         drawText( "Descarte: " + descarte.size(), colX( 1 ), TOPO_Y + CH + 4, 14, WHITE );
 
         // informações
@@ -491,32 +413,24 @@ public class Main extends EngineFrame {
         drawText( "Movs: " + movimentos, colX( 2 ) + 6, TOPO_Y + 10, 14, WHITE );
         drawText( String.format( "Tempo: %02d:%02d", s / 60, s % 60 ), colX( 2 ) + 6, TOPO_Y + 32, 14, WHITE );
         drawText( "R: novo jogo", colX( 2 ) + 6, TOPO_Y + 54, 14, WHITE );
+        
 
         // fundações
         for ( int f = 0; f < 4; f++ ) {
             List<Carta> fund = fundacoes.get( f );
             boolean arrastandoDaqui = origem == Origem.FUNDACAO && origemIdx == f && !arrastando.isEmpty();
             int topo = fund.size() - ( arrastandoDaqui ? 2 : 1 );
-            if ( topo >= 0 ) {
-                desenharCarta( fund.get( topo ), colX( 3 + f ), TOPO_Y );
-            } else {
-                desenharSlot( colX( 3 + f ), TOPO_Y, "A" );
-            }
+            if ( topo >= 0 ) desenharCarta( fund.get( topo ), colX( 3 + f ), TOPO_Y );
+            else desenharSlot( colX( 3 + f ), TOPO_Y, "A" );
         }
 
         // colunas
         for ( int c = 0; c < 7; c++ ) {
             List<Carta> col = colunas.get( c );
             int limite = col.size();
-            if ( origem == Origem.COLUNA && origemIdx == c && !arrastando.isEmpty() ) {
-                limite = origemPos;
-            }
-            if ( limite == 0 ) {
-                desenharSlot( colX( c ), TAB_Y, col.isEmpty() ? "K" : null );
-            }
-            for ( int i = 0; i < limite; i++ ) {
-                desenharCarta( col.get( i ), colX( c ), cartaY( col, i ) );
-            }
+            if ( origem == Origem.COLUNA && origemIdx == c && !arrastando.isEmpty() ) limite = origemPos;
+            if ( limite == 0 ) desenharSlot( colX( c ), TAB_Y, col.isEmpty() ? "K" : null );
+            for ( int i = 0; i < limite; i++ ) desenharCarta( col.get( i ), colX( c ), cartaY( col, i ) );
         }
 
         // cartas sendo arrastadas
@@ -530,17 +444,84 @@ public class Main extends EngineFrame {
             String t2 = "Pressione R para jogar novamente";
             Rectangle r1 = measureTextBounds( t1, 40 );
             Rectangle r2 = measureTextBounds( t2, 18 );
-            double cx = getScreenWidth() / 2.0;
-            double cy = getScreenHeight() / 2.0;
+            double cx = LARGURA / 2.0;
+            double cy = 650 / 2.0;
             fillRectangle( cx - r2.width / 2 - 30, cy - 60, r2.width + 60, 120, BLACK );
             drawText( t1, cx - r1.width / 2, cy - 40, 40, WHITE );
             drawText( t2, cx - r2.width / 2, cy + 20, 18, WHITE );
         }
 
+        // --- PAINEL DIDÁTICO DAS PILHAS LIFO (Exibe apenas se o espaço for apertado) ---
+        if ( modoDidatico ) {
+            desenharVisualizacaoPilhas();
+        }
+    }
+
+    // ---------------------------------------------------------------- visualização didática (LIFO)
+    private void desenharVisualizacaoPilhas() {
+        int visY = 660; // Começa logo abaixo da área do jogo
+        int visH = 240; 
+        
+        fillRectangle( 0, visY, LARGURA, visH, WHITE );
+        drawLine( 0, visY, LARGURA, visY, BLACK ); 
+        
+        drawText( "Demonstração de Estrutura de Dados: PILHAS", 20, visY + 15, 20, DARKGREEN );
+        
+        // Estoque
+        
+        desenharPilha( estoque, 20, visY + 80);
+        
+        // Descarte
+        
+        desenharPilha( descarte, 20, visY + 170);
+    }
+
+    private void desenharPilha( Pilha<Carta> pilha, double x, double y) {
+        drawRectangle( x, y, 750, 55, BLACK );
+        
+        List<Carta> itens = pilha.getElementosParaVisualizacao();
+        
+        if ( itens.isEmpty() ) {
+            drawText( "[ Pilha Vazia ]", x + 310, y + 23, 16, GRAY );
+            return;
+        }
+
+        double minCW = 35; 
+        double minCH = 48; 
+        double espacamento = 25; 
+        
+        drawText( "BASE", x + 5, y - 18, 12, GRAY ); // Na pilha chamamos de Base
+
+        for ( int i = 0; i < itens.size(); i++ ) {
+            Carta c = itens.get( i );
+            double cx = x + 10 + ( i * espacamento );
+            double cy = y + 3;
+            
+            if ( c.getImagemFrente() != null ) {
+                drawImage( c.getImagemFrente(), new Rectangle( 0, 0, CW, CH ), new Rectangle( cx, cy, minCW, minCH ), WHITE );
+                drawRectangle( cx, cy, minCW, minCH, BLACK );
+            }
+        }
+        
+        // Indicador de TOPO da Pilha (onde as cartas entram e saem!)
+        double fimX = x + 10 + ( (itens.size() - 1) * espacamento ) + minCW;
+        drawText( "TOPO ->", fimX + 5, y - 18, 14, RED );
+    }
+
+    // Getters para as janelas didáticas
+    public List<List<Carta>> getColunas() {
+        return colunas;
+    }
+
+    public List<List<Carta>> getFundacoes() {
+        return fundacoes;
+    }
+
+    public boolean isModoDidatico() {
+        return modoDidatico;
     }
 
     public static void main( String[] args ) {
         new Main();
     }
-
 }
