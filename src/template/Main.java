@@ -407,7 +407,7 @@ public class Main extends EngineFrame {
         drawText( "Movs: " + movimentos, colX( 2 ) + 6, TOPO_Y + 10, 14, WHITE );
         drawText( String.format( "Tempo: %02d:%02d", s / 60, s % 60 ), colX( 2 ) + 6, TOPO_Y + 32, 14, WHITE );
         drawText( "R: novo jogo", colX( 2 ) + 6, TOPO_Y + 54, 14, WHITE );
-        drawText( "ESPAÇO: Modo Didático", colX( 2 ) + 6, TOPO_Y + 76, 14, ORANGE );
+       
 
         // fundações
         for ( int f = 0; f < 4; f++ ) {

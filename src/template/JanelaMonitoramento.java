@@ -117,7 +117,7 @@ public class JanelaMonitoramento extends EngineFrame {
                 }
                 cy -= 15; 
             }
-            if (!fund.isEmpty()) drawText("<- TOPO", x + cardW + 10, cy + 50, 12, RED);
+            
         }
     }
 
@@ -135,7 +135,7 @@ public class JanelaMonitoramento extends EngineFrame {
 
         for (int i = 0; i < 7; i++) {
             List<Carta> col = colunas.get(i);
-            // Ajustado de 160 para 145 para que a última coluna não corte no canto direito
+            
             int startX = 30 + (i * 145);
             int y = startY + 30;
             
