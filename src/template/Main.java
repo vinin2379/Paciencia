@@ -9,13 +9,13 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Paciência (Klondike) com modo didático ativado pela tecla Espaço.
+ * Paciência (Klondike) com modo didático (Painel de Monitoramento unificado).
  */
 public class Main extends EngineFrame {
 
     // ---------------------------------------------------------------- constantes
     private static final int LARGURA = 800;
-    private static final int ALTURA = 900;
+    private static final int ALTURA = 650; // <-- Voltou ao normal, só o jogo!
     private static final int CW = 88;
     private static final int CH = 120;
     private static final int GAP = 24;
@@ -48,7 +48,6 @@ public class Main extends EngineFrame {
     private double tempo;
     private boolean venceu;
 
-    // NOVIDADE: Inicia com o modo didático DESLIGADO (false)
     private boolean modoDidatico = false;
 
     public Main() {
@@ -67,13 +66,10 @@ public class Main extends EngineFrame {
         }
 
         novoJogo();
-        
-        // As janelas extras NÃO iniciam sozinhas mais, esperam a barra de espaço.
     }
 
     // ---------------------------------------------------------------- preparação
     private void novoJogo() {
-
         estoque = new Pilha<>();
         descarte = new Pilha<>();
         colunas = new ArrayList<>();
@@ -223,10 +219,9 @@ public class Main extends EngineFrame {
         if ( isKeyPressed( KEY_SPACE ) ) {
             modoDidatico = !modoDidatico;
             
-            // Se ativou, abrimos as janelas em Threads secundárias
+            // Abre UMA janela apenas contendo tudo
             if ( modoDidatico ) {
-                new Thread(() -> new JanelaColunas(this)).start();
-                new Thread(() -> new JanelaFundacoes(this)).start();
+                new Thread(() -> new JanelaMonitoramento(this)).start();
             }
         }
 
@@ -394,7 +389,6 @@ public class Main extends EngineFrame {
         drawText( "Estoque: " + estoque.size(), colX( 0 ), TOPO_Y + CH + 4, 14, WHITE );
 
         // descarte 
-        // Oculta a carta (apenas a imagem) se não for modo didático
         boolean arrastandoDescarte = origem == Origem.DESCARTE && !arrastando.isEmpty();
         if ( !descarte.isEmpty() && !arrastandoDescarte ) {
              if (modoDidatico) {
@@ -413,7 +407,7 @@ public class Main extends EngineFrame {
         drawText( "Movs: " + movimentos, colX( 2 ) + 6, TOPO_Y + 10, 14, WHITE );
         drawText( String.format( "Tempo: %02d:%02d", s / 60, s % 60 ), colX( 2 ) + 6, TOPO_Y + 32, 14, WHITE );
         drawText( "R: novo jogo", colX( 2 ) + 6, TOPO_Y + 54, 14, WHITE );
-        
+        drawText( "ESPAÇO: Modo Didático", colX( 2 ) + 6, TOPO_Y + 76, 14, ORANGE );
 
         // fundações
         for ( int f = 0; f < 4; f++ ) {
@@ -433,12 +427,10 @@ public class Main extends EngineFrame {
             for ( int i = 0; i < limite; i++ ) desenharCarta( col.get( i ), colX( c ), cartaY( col, i ) );
         }
 
-        // cartas sendo arrastadas
         for ( int k = 0; k < arrastando.size(); k++ ) {
             desenharCarta( arrastando.get( k ), mx - offX, my - offY + k * 26 );
         }
 
-        // vitória
         if ( venceu ) {
             String t1 = "Você venceu!";
             String t2 = "Pressione R para jogar novamente";
@@ -450,76 +442,14 @@ public class Main extends EngineFrame {
             drawText( t1, cx - r1.width / 2, cy - 40, 40, WHITE );
             drawText( t2, cx - r2.width / 2, cy + 20, 18, WHITE );
         }
-
-        // --- PAINEL DIDÁTICO DAS PILHAS LIFO (Exibe apenas se o espaço for apertado) ---
-        if ( modoDidatico ) {
-            desenharVisualizacaoPilhas();
-        }
     }
 
-    // ---------------------------------------------------------------- visualização didática (LIFO)
-    private void desenharVisualizacaoPilhas() {
-        int visY = 660; // Começa logo abaixo da área do jogo
-        int visH = 240; 
-        
-        fillRectangle( 0, visY, LARGURA, visH, WHITE );
-        drawLine( 0, visY, LARGURA, visY, BLACK ); 
-        
-        drawText( "Demonstração de Estrutura de Dados: PILHAS", 20, visY + 15, 20, DARKGREEN );
-        
-        // Estoque
-        
-        desenharPilha( estoque, 20, visY + 80);
-        
-        // Descarte
-        
-        desenharPilha( descarte, 20, visY + 170);
-    }
-
-    private void desenharPilha( Pilha<Carta> pilha, double x, double y) {
-        drawRectangle( x, y, 750, 55, BLACK );
-        
-        List<Carta> itens = pilha.getElementosParaVisualizacao();
-        
-        if ( itens.isEmpty() ) {
-            drawText( "[ Pilha Vazia ]", x + 310, y + 23, 16, GRAY );
-            return;
-        }
-
-        double minCW = 35; 
-        double minCH = 48; 
-        double espacamento = 25; 
-        
-        drawText( "BASE", x + 5, y - 18, 12, GRAY ); // Na pilha chamamos de Base
-
-        for ( int i = 0; i < itens.size(); i++ ) {
-            Carta c = itens.get( i );
-            double cx = x + 10 + ( i * espacamento );
-            double cy = y + 3;
-            
-            if ( c.getImagemFrente() != null ) {
-                drawImage( c.getImagemFrente(), new Rectangle( 0, 0, CW, CH ), new Rectangle( cx, cy, minCW, minCH ), WHITE );
-                drawRectangle( cx, cy, minCW, minCH, BLACK );
-            }
-        }
-        
-        // Indicador de TOPO da Pilha (onde as cartas entram e saem!)
-        double fimX = x + 10 + ( (itens.size() - 1) * espacamento ) + minCW;
-        drawText( "TOPO ->", fimX + 5, y - 18, 14, RED );
-    }
-
-    // Getters para as janelas didáticas
-    public List<List<Carta>> getColunas() {
-        return colunas;
-    }
-
-    public List<List<Carta>> getFundacoes() {
-        return fundacoes;
-    }
-
-    public boolean isModoDidatico() {
-        return modoDidatico;
-    }
+    // Getters para a janela didática ler os dados
+    public Pilha<Carta> getEstoque() { return estoque; }
+    public Pilha<Carta> getDescarte() { return descarte; }
+    public List<List<Carta>> getColunas() { return colunas; }
+    public List<List<Carta>> getFundacoes() { return fundacoes; }
+    public boolean isModoDidatico() { return modoDidatico; }
 
     public static void main( String[] args ) {
         new Main();
