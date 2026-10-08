@@ -145,7 +145,9 @@ public class Main extends EngineFrame {
             List<Carta> fund = fundacoes.get( f );
             boolean arrastandoDaqui = origem == Origem.FUNDACAO && origemIdx == f && !arrastando.isEmpty();
             int topo = fund.size() - ( arrastandoDaqui ? 2 : 1 );
-            if ( topo >= 0 ) desenharCarta( fund.get( topo ), colX( 3 + f ), TOPO_Y );
+            if ( topo >= 0 ) {
+                desenharCarta( fund.get( topo ), colX( 3 + f ), TOPO_Y );
+            }
             else desenharSlot( colX( 3 + f ), TOPO_Y, "A" );
         }
 
@@ -153,8 +155,12 @@ public class Main extends EngineFrame {
         for ( int c = 0; c < 7; c++ ) {
             List<Carta> col = colunas.get( c );
             int limite = col.size();
-            if ( origem == Origem.COLUNA && origemIdx == c && !arrastando.isEmpty() ) limite = origemPos;
-            if ( limite == 0 ) desenharSlot( colX( c ), TAB_Y, col.isEmpty() ? "K" : null );
+            if ( origem == Origem.COLUNA && origemIdx == c && !arrastando.isEmpty() ) {
+                limite = origemPos;
+            }
+            if ( limite == 0 ) {
+                desenharSlot( colX( c ), TAB_Y, col.isEmpty() ? "K" : null );
+            }
             for ( int i = 0; i < limite; i++ ) desenharCarta( col.get( i ), colX( c ), cartaY( col, i ) );
         }
 
@@ -259,7 +265,9 @@ public class Main extends EngineFrame {
         double acima = 26;
         int nd = 0, nu = 0;
         for ( Carta c : col ) {
-            if ( c.virada ) nu++;
+            if ( c.virada ) {
+                nu++;
+            }
             else nd++;
         }
         double disponivel = 650 - TAB_Y - CH - 15;
@@ -285,21 +293,27 @@ public class Main extends EngineFrame {
 
     private boolean podeFundacao( Carta c, int f ) {
         List<Carta> fund = fundacoes.get( f );
-        if ( fund.isEmpty() ) return c.valor == 1;
+        if ( fund.isEmpty() ) {
+            return c.valor == 1;
+        }
         Carta topo = fund.get( fund.size() - 1 );
         return topo.naipe == c.naipe && c.valor == topo.valor + 1;
     }
 
     private boolean podeColuna( Carta c, int idx ) {
         List<Carta> col = colunas.get( idx );
-        if ( col.isEmpty() ) return c.valor == 13;
+        if ( col.isEmpty() ) {
+            return c.valor == 13;
+        }
         Carta topo = col.get( col.size() - 1 );
         return topo.virada && topo.vermelha() != c.vermelha() && topo.valor == c.valor + 1;
     }
 
     private void verificarVitoria() {
         for ( List<Carta> f : fundacoes ) {
-            if ( f.size() < 13 ) return;
+            if ( f.size() < 13 ) {
+                return;
+            }
         }
         venceu = true;
     }
@@ -312,7 +326,9 @@ public class Main extends EngineFrame {
             case COLUNA: 
                 List<Carta> col = colunas.get( origemIdx );
                 col.subList( origemPos, col.size() ).clear();
-                if ( !col.isEmpty() ) col.get( col.size() - 1 ).virada = true;
+                if ( !col.isEmpty() ) {
+                    col.get( col.size() - 1 ).virada = true;
+                }
                 break;
             case FUNDACAO: 
                 List<Carta> f = fundacoes.get( origemIdx );
@@ -368,7 +384,9 @@ public class Main extends EngineFrame {
     }
 
     private void aoSoltar() {
-        if ( arrastando.isEmpty() ) return;
+        if ( arrastando.isEmpty() ){
+            return;
+        }
         boolean ok = false;
         Carta primeira = arrastando.get( 0 );
 
@@ -429,7 +447,9 @@ public class Main extends EngineFrame {
             if ( podeFundacao( carta, f ) ) {
                 origem = o;
                 origemIdx = idx;
-                if ( o == Origem.COLUNA ) origemPos = colunas.get( idx ).size() - 1;
+                if ( o == Origem.COLUNA ){
+                    origemPos = colunas.get( idx ).size() - 1;
+                }
                 removerOrigem();
                 origem = Origem.NENHUMA;
                 fundacoes.get( f ).add( carta );
@@ -451,7 +471,9 @@ public class Main extends EngineFrame {
 
     private void desenharCarta( Carta c, double x, double y ) {
         if ( !c.virada ) {
-            if ( c.getImagemVerso() != null ) drawImage( c.getImagemVerso(), x, y );
+            if ( c.getImagemVerso() != null ){
+                drawImage( c.getImagemVerso(), x, y );
+            }
             else desenharVerso( x, y );
             return;
         }
