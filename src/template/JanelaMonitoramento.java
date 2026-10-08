@@ -6,14 +6,14 @@ import java.util.List;
 
 /**
  * Painel Único de Monitoramento das Estruturas de Dados.
- * Largura ajustada para 1080px (para caber ao lado do jogo de 800px num monitor 1920px).
+ * 
  */
 public class JanelaMonitoramento extends EngineFrame {
 
     private Main jogoPrincipal;
 
     public JanelaMonitoramento(Main jogoPrincipal) {
-        // Reduzido de 1200 para 1080 pixels de largura
+        
         super(1080, 850, "Painel de Controle", 60, true);
         this.jogoPrincipal = jogoPrincipal;
     }
@@ -23,9 +23,9 @@ public class JanelaMonitoramento extends EngineFrame {
 
     @Override
     public void update(double delta) { 
-        // Se apertar espaço na Main, ela fecha essa janela automaticamente
+        
         if ( !jogoPrincipal.isModoDidatico() ) {
-            //closeWindow();
+            
         }
     }
 
@@ -34,33 +34,33 @@ public class JanelaMonitoramento extends EngineFrame {
         clearBackground(WHITE);
         
         drawText("ESTRUTURAS DE DADOS", 20, 20, 28, DARKGREEN);
-        drawLine(20, 60, 1060, 60, BLACK); // Linha ajustada para nova largura
+        drawLine(20, 60, 1060, 60, BLACK); 
 
-        // Usamos try/catch para evitar conflito se a lista mudar exato no milissegundo da renderização
+       
         try {
             desenharPilhasEstoqueDescarte();
             desenharFundacoes();
             desenharColunas();
         } catch (Exception e) {
-            // Ignora frame p/ não crashar
+            
         }
     }
 
-    // --- 1. SETOR: ESTOQUE E DESCARTE (Canto Superior Esquerdo) ---
+    
     private void desenharPilhasEstoqueDescarte() {
         int startY = 80;
         
         drawText("1. PILHAS HORIZONTAIS", 20, startY, 20, DARKBLUE);
         
-        //drawText("Estoque", 20, startY + 30, 16, BLACK);
+        
         renderPilhaHorizontal(jogoPrincipal.getEstoque(), 20, startY + 50);
         
-        //drawText("Descarte", 20, startY + 120, 16, BLACK);
+        
         renderPilhaHorizontal(jogoPrincipal.getDescarte(), 20, startY + 140);
     }
 
     private void renderPilhaHorizontal(Pilha<Carta> pilha, double x, double y) {
-        // Reduzi a caixa base de 600 para 580 para dar respiro
+        
         drawRectangle(x, y, 580, 55, BLACK);
         
         List<Carta> itens = pilha.getElementosParaVisualizacao();
@@ -87,9 +87,9 @@ public class JanelaMonitoramento extends EngineFrame {
         drawText("<- TOPO", fimX + 5, y - 15, 14, RED);
     }
 
-    // --- 2. SETOR: FUNDAÇÕES/ORGANIZADORES (Canto Superior Direito) ---
+    
     private void desenharFundacoes() {
-        // Puxado mais para a esquerda (de 680 para 630) para caber na tela
+        
         int startX = 630;
         int startY = 80;
         
@@ -102,7 +102,7 @@ public class JanelaMonitoramento extends EngineFrame {
 
         for (int i = 0; i < 4; i++) {
             List<Carta> fund = fundacoes.get(i);
-            // Reduzido o espaçamento entre elas de 125 para 105
+            
             int x = startX + (i * 105);
             
             drawText("Org. " + (i+1), x + 15, startY + 30, 16, BLACK);
@@ -121,7 +121,7 @@ public class JanelaMonitoramento extends EngineFrame {
         }
     }
 
-    // --- 3. SETOR: COLUNAS/MONTES (Parte Inferior da Janela) ---
+    
     private void desenharColunas() {
         int startY = 380;
         drawLine(20, startY - 15, 1060, startY - 15, LIGHTGRAY);
