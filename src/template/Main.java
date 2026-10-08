@@ -125,7 +125,7 @@ public class Main extends EngineFrame {
              if (modoDidatico) {
                  desenharCarta( descarte.peek(), colX( 1 ), TOPO_Y );
              } else {
-                 desenharSlot( colX( 1 ), TOPO_Y, null ); // Esconde a carta jogada!
+                 desenharSlot( colX( 1 ), TOPO_Y, null ); 
              }
         } else {
              desenharSlot( colX( 1 ), TOPO_Y, null );
